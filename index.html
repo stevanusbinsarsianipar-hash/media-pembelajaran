@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lintasan Bola: Fungsi Kuadrat Interaktif</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 1200px; margin: auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; padding: 20px; background-color: #ecf0f1; border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 8px; font-weight: bold; color: #34495e; }
+        input[type="range"], input[type="number"] { width: 100%; margin-bottom: 15px; cursor: pointer; }
+        .canvas-container { position: relative; width: 100%; height: 450px; background-color: #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 30px; }
+        canvas { display: block; width: 100%; height: 100%; }
+        .point { position: absolute; width: 10px; height: 10px; background-color: red; border-radius: 50%; cursor: grab; z-index: 10; }
+        .point.dragged { cursor: grabbing; }
+        .info-box { background-color: #fdf6e3; border: 1px solid #f5e6cc; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .info-box h3 { margin-top: 0; color: #b58900; }
+        .equation-box { background-color: #e8f6f3; border: 1px solid #d0e9c6; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .equation-box h3 { margin-top: 0; color: #008080; }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .result-item { background-color: #e7eef9; padding: 15px; border-radius: 5px; text-align: center; }
+        .result-item h4 { margin: 0 0 10px 0; color: #2980b9; }
+        .challenge-section, .reflection-section { margin-top: 30px; padding: 25px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; }
+        .challenge-section h3, .reflection-section h3 { color: #17a2b8; }
+        textarea { width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; }
+        button { background-color: #17a2b8; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s ease; }
+        button:hover { background-color: #138496; }
+        .hidden { display: none; }
+        .highlight { color: #dc3545; font-weight: bold; }
+        .axis-label { font-size: 0.8em; fill: #555; }
+        .grid-line { stroke: #ccc; stroke-width: 0.5px; }
+        .ball { position: absolute; width: 20px; height: 20px; background-color: #ffc107; border-radius: 50%; z-index: 5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Menemukan Fungsi Kuadrat melalui Lintasan Lemparan Bola</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="height">Tinggi Maksimum (y): <span id="height-val">5</span></label>
+                <input type="range" id="height" min="1" max="10" value="5" oninput="updateControls()">
+            </div>
+            <div class="control-group">
+                <label for="distance">Jarak Horizontal (x): <span id="distance-val">10</span></label>
+                <input type="range" id="distance" min="1" max="20" value="10" oninput="updateControls()">
+            </div>
+            <div class="control-group">
+                <label for="startX">Posisi Awal X: <span id="startX-val">0</span></label>
+                <input type="range" id="startX" min="-5" max="5" value="0" oninput="updateControls()">
+            </div>
+             <div class="control-group">
+                <label for="startY">Posisi Awal Y: <span id="startY-val">0</span></label>
+                <input type="range" id="startY" min="0" max="3" value="0" oninput="updateControls()">
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="parabolaCanvas"></canvas>
+            <div id="point1" class="point" style="top: 100px; left: 100px;"></div>
+            <div id="point2" class="point" style="top: 150px; left: 200px;"></div>
+            <div id="point3" class="point" style="top: 200px; left: 300px;"></div>
+            <div id="ball" class="ball" style="display: none;"></div>
+        </div>
+
+        <div class="info-box">
+            <h3>Cara Menggunakan</h3>
+            <p>1. Gunakan slider di atas untuk mengatur tinggi maksimum, jarak horizontal, dan posisi awal lemparan bola. Grafik akan diperbarui secara otomatis.</p>
+            <p>2. Geser titik-titik merah (titik 1, 2, 3) pada grafik untuk mengubah bentuk parabola secara manual. Perhatikan bagaimana persamaan dan karakteristiknya berubah.</p>
+            <p>3. Amati koordinat titik-titik pada lintasan dan bagaimana mereka berhubungan dengan persamaan fungsi kuadrat \(f(x) = ax^2 + bx + c\).</p>
+            <p>4. Klik tombol "Animasi Lemparan" untuk melihat simulasi bola dilempar.</p>
+            <button onclick="startAnimation()">Animasi Lemparan</button>
+        </div>
+
+        <div class="equation-box">
+            <h3>Persamaan Fungsi Kuadrat</h3>
+            <p>Persamaan yang Dihasilkan: <strong id="equation-display">f(x) = ax² + bx + c</strong></p>
+            <p>Perhitungan Manual: Masukkan koordinat tiga titik yang Anda temukan ke dalam kolom di bawah untuk menentukan persamaan fungsi kuadratnya.</p>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label for="x1">Titik 1 (x1):</label>
+                    <input type="number" id="x1" placeholder="x1">
+                </div>
+                <div>
+                    <label for="y1">Titik 1 (y1):</label>
+                    <input type="number" id="y1" placeholder="y1">
+                </div>
+                 <div>
+                    <label for="x2">Titik 2 (x2):</label>
+                    <input type="number" id="x2" placeholder="x2">
+                </div>
+                <div>
+                    <label for="y2">Titik 2 (y2):</label>
+                    <input type="number" id="y2" placeholder="y2">
+                </div>
+                 <div>
+                    <label for="x3">Titik 3 (x3):</label>
+                    <input type="number" id="x3" placeholder="x3">
+                </div>
+                <div>
+                    <label for="y3">Titik 3 (y3):</label>
+                    <input type="number" id="y3" placeholder="y3">
+                </div>
+            </div>
+            <button onclick="calculateEquationFromPoints()">Hitung Persamaan</button>
+            <p id="manual-equation-display" style="margin-top: 15px; font-weight: bold;"></p>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-item">
+                <h4>Titik Puncak</h4>
+                <p id="vertex">(-, -)</p>
+            </div>
+            <div class="result-item">
+                <h4>Sumbu Simetri</h4>
+                <p id="axis-of-symmetry">x = -</p>
+            </div>
+            <div class="result-item">
+                <h4>Titik Potong Sumbu-Y</h4>
+                <p id="y-intercept">(0, -)</p>
+            </div>
+            <div class="result-item">
+                <h4>Akar-akar Fungsi</h4>
+                <p id="roots">-</p>
+            </div>
+        </div>
+
+        <div class="challenge-section">
+            <h3>Tantangan Kontekstual</h3>
+            <p>Sebuah bola basket dilempar dari ketinggian 1.5 meter dengan jarak horizontal 2 meter dari keranjang. Tinggi maksimum yang dicapai bola adalah 4 meter pada jarak horizontal 5 meter dari titik lemparan. Tentukan persamaan fungsi kuadrat lintasan bola basket tersebut dan perkirakan apakah bola akan masuk ke keranjang yang berada pada jarak horizontal 7 meter dari titik lemparan.</p>
+            <p>Gunakan slider atau geser titik untuk mencoba mensimulasikan kondisi ini, lalu gunakan perhitungan manual untuk mendapatkan persamaan pastinya.</p>
+        </div>
+
+        <div class="reflection-section">
+            <h3>Refleksi Berpikir Kritis</h3>
+            <p>Bagaimana perubahan nilai <em>a</em>, <em>b</em>, dan <em>c</em> dalam fungsi \(f(x)=ax^2+bx+c\) memengaruhi bentuk dan posisi parabola lintasan bola?</p>
+            <p>Kapan Anda akan menggunakan informasi titik puncak versus titik potong sumbu-y saat menganalisis lintasan bola?</p>
+            <p>Berikan contoh lain dalam kehidupan sehari-hari di mana konsep fungsi kuadrat dan lintasan parabola dapat diamati.</p>
+            <textarea placeholder="Tulis refleksi Anda di sini..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('parabolaCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const ball = document.getElementById('ball');
+
+        let points = [
+            { id: 'point1', x: 50, y: 350, dataX: 0, dataY: 0 },
+            { id: 'point2', x: 150, y: 250, dataX: 5, dataY: 5 },
+            { id: 'point3', x: 250, y: 150, dataX: 10, dataY: 0 }
+        ];
+
+        let scaleX, scaleY, offsetX, offsetY;
+        let draggingPoint = null;
+        let offset = { x: 0, y: 0 };
+
+        const heightSlider = document.getElementById('height');
+        const distanceSlider = document.getElementById('distance');
+        const startXSlider = document.getElementById('startX');
+        const startYSlider = document.getElementById('startY');
+
+        const heightValSpan = document.getElementById('height-val');
+        const distanceValSpan = document.getElementById('distance-val');
+        const startXValSpan = document.getElementById('startX-val');
+        const startYValSpan = document.getElementById('startY-val');
+
+        const equationDisplay = document.getElementById('equation-display');
+        const vertexDisplay = document.getElementById('vertex');
+        const axisOfSymmetryDisplay = document.getElementById('axis-of-symmetry');
+        const yInterceptDisplay = document.getElementById('y-intercept');
+        const rootsDisplay = document.getElementById('roots');
+        const manualEquationDisplay = document.getElementById('manual-equation-display');
+
+        // Default point positions based on sliders
+        function setDefaultPoints() {
+            const startX = parseFloat(startXSlider.value);
+            const startY = parseFloat(startYSlider.value);
+            const height = parseFloat(heightSlider.value);
+            const distance = parseFloat(distanceSlider.value);
+
+            // Calculate vertex based on height and distance (assuming symmetry around midpoint of distance)
+            const vertexX = startX + distance / 2;
+            const vertexY = startY + height;
+
+            points[0] = { id: 'point1', x: 0, y: 0, dataX: startX, dataY: startY }; // Start point
+            points[1] = { id: 'point2', x: 0, y: 0, dataX: vertexX, dataY: vertexY }; // Vertex
+            points[2] = { id: 'point3', x: 0, y: 0, dataX: startX + distance, dataY: startY }; // End point
+
+            updatePointPositions();
+            drawParabola();
+            updateEquationDisplay();
+        }
+
+        function updateControls() {
+            heightValSpan.textContent = heightSlider.value;
+            distanceValSpan.textContent = distanceSlider.value;
+            startXValSpan.textContent = startXSlider.value;
+            startYValSpan.textContent = startYSlider.value;
+
+            // Recalculate and update points based on slider values if not dragging
+            if (!draggingPoint) {
+                setDefaultPoints();
+            }
+        }
+
+        function setScaleAndOffset() {
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+
+            const dataMinX = Math.min(...points.map(p => p.dataX)) - 2;
+            const dataMaxX = Math.max(...points.map(p => p.dataX)) + 2;
+            const dataMinY = Math.min(0, ...points.map(p => p.dataY)) - 1;
+            const dataMaxY = Math.max(...points.map(p => p.dataY)) + 2;
+
+            scaleX = canvasWidth / (dataMaxX - dataMinX);
+            scaleY = canvasHeight / (dataMaxY - dataMinY);
+            offsetX = -dataMinX * scaleX;
+            offsetY = dataMaxY * scaleY; // Invert Y-axis for canvas
+
+            // Adjust for padding/margins if needed
+            const padding = 40;
+            scaleX = (canvasWidth - 2 * padding) / (dataMaxX - dataMinX);
+            scaleY = (canvasHeight - 2 * padding) / (dataMaxY - dataMinY);
+            offsetX = padding - dataMinX * scaleX;
+            offsetY = canvasHeight - padding - dataMaxY * scaleY; // Invert Y-axis for canvas
+        }
+
+        function dataToCanvas(x, y) {
+            return {
+                x: offsetX + x * scaleX,
+                y: offsetY - y * scaleY // Invert Y-axis for canvas
+            };
+        }
+
+        function canvasToData(x, y) {
+            return {
+                x: (x - offsetX) / scaleX,
+                y: (offsetY - y) / scaleY // Invert Y-axis for canvas
+            };
+        }
+
+        function updatePointPositions() {
+            setScaleAndOffset();
+            points.forEach(p => {
+                const canvasCoords = dataToCanvas(p.dataX, p.dataY);
+                const pointElement = document.getElementById(p.id);
+                if (pointElement) {
+                    pointElement.style.left = `${canvasCoords.x - 5}px`; // Center the point
+                    pointElement.style.top = `${canvasCoords.y - 5}px`; // Center the point
+                }
+            });
+             // Update input fields for manual calculation
+            document.getElementById('x1').value = points[0].dataX.toFixed(2);
+            document.getElementById('y1').value = points[0].dataY.toFixed(2);
+            document.getElementById('x2').value = points[1].dataX.toFixed(2);
+            document.getElementById('y2').value = points[1].dataY.toFixed(2);
+            document.getElementById('x3').value = points[2].dataX.toFixed(2);
+            document.getElementById('y3').value = points[2].dataY.toFixed(2);
+        }
+
+        function drawAxes() {
+            setScaleAndOffset();
+            ctx.beginPath();
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 1;
+
+            // X-axis
+            const xAxisY = dataToCanvas(0, 0).y;
+            ctx.moveTo(0, xAxisY);
+            ctx.lineTo(canvas.width, xAxisY);
+
+            // Y-axis
+            const yAxisX = dataToCanvas(0, 0).x;
+            ctx.moveTo(yAxisX, 0);
+            ctx.lineTo(yAxisX, canvas.height);
+
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#555';
+            ctx.font = '12px Arial';
+            const xAxisLabelY = dataToCanvas(0, 0).y + 15;
+            const yAxisLabelX = dataToCanvas(0, 0).x + 10;
+
+            const dataMinX = Math.min(...points.map(p => p.dataX)) - 2;
+            const dataMaxX = Math.max(...points.map(p => p.dataX)) + 2;
+            const dataMinY = Math.min(0, ...points.map(p => p.dataY)) - 1;
+            const dataMaxY = Math.max(...points.map(p => p.dataY)) + 2;
+
+            // Draw X-axis ticks and labels
+            for (let x = Math.ceil(dataMinX); x <= Math.floor(dataMaxX); x++) {
+                if (x !== 0) {
+                    const tickX = dataToCanvas(x, 0).x;
+                    ctx.moveTo(tickX, xAxisY - 5);
+                    ctx.lineTo(tickX, xAxisY + 5);
+                    ctx.fillText(x.toString(), tickX - (ctx.measureText(x.toString()).width / 2), xAxisLabelY);
+                }
+            }
+
+            // Draw Y-axis ticks and labels
+            for (let y = Math.ceil(dataMinY); y <= Math.floor(dataMaxY); y++) {
+                 if (y !== 0) {
+                    const tickY = dataToCanvas(0, y).y;
+                    ctx.moveTo(yAxisX - 5, tickY);
+                    ctx.lineTo(yAxisX + 5, tickY);
+                    ctx.fillText(y.toString(), yAxisLabelX, tickY + 4);
+                 }
+            }
+             ctx.stroke();
+        }
+
+        function drawParabola() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawAxes();
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 3;
+
+            const dataMinX = Math.min(...points.map(p => p.dataX)) - 2;
+            const dataMaxX = Math.max(...points.map(p => p.dataX)) + 2;
+
+            const step = (dataMaxX - dataMinX) / canvas.width * 2; // Smaller step for smoother curve
+
+            let firstPoint = true;
+            for (let x_data = dataMinX; x_data <= dataMaxX; x_data += step) {
+                const y_data = calculateY(x_data);
+                const canvasCoords = dataToCanvas(x_data, y_data);
+
+                // Only draw if within canvas bounds and y >= 0 (or close to it)
+                if (canvasCoords.x >= 0 && canvasCoords.x <= canvas.width && y_data >= 0) {
+                    if (firstPoint) {
+                        ctx.moveTo(canvasCoords.x, canvasCoords.y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(canvasCoords.x, canvasCoords.y);
+                    }
+                }
+            }
+            ctx.stroke();
+
+            // Draw the points
+            points.forEach(p => {
+                const pointElement = document.getElementById(p.id);
+                if (pointElement) {
+                    ctx.beginPath();
+                    ctx.arc(parseFloat(pointElement.style.left) + 5, parseFloat(pointElement.style.top) + 5, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'red';
+                    ctx.fill();
+                }
+            });
+        }
+
+        function calculateY(x) {
+            // Use the equation derived from the first three points for drawing
+            const p1 = points[0];
+            const p2 = points[1];
+            const p3 = points[2];
+
+            // Ensure points are distinct to avoid division by zero
+            if (p1.dataX === p2.dataX || p1.dataX === p3.dataX || p2.dataX === p3.dataX) {
+                // Fallback or indicate error if points are collinear horizontally
+                // For simplicity, we'll just return a default value or stop drawing
+                return p1.dataY;
+            }
+
+            // Solve for a, b, c using system of equations:
+            // y1 = a*x1^2 + b*x1 + c
+            // y2 = a*x2^2 + b*x2 + c
+            // y3 = a*x3^2 + b*x3 + c
+
+            const x1 = p1.dataX, y1 = p1.dataY;
+            const x2 = p2.dataX, y2 = p2.dataY;
+            const x3 = p3.dataX, y3 = p3.dataY;
+
+            const A = x1 * (x2 - x3) + x2 * (x3 - x1) + x3 * (x1 - x2);
+            const B = (x1*x1 * (x3 - x2) + x2*x2 * (x1 - x3) + x3*x3 * (x2 - x1));
+            const C = (x1*x1 * (x2*y3 - x3*y2) + x2*x2 * (x3*y1 - x1*y3) + x3*x3 * (x1*y2 - x2*y1));
+            const D = (x1 * (x2*y3 - x3*y2) + x2 * (x3*y1 - x1*y3) + x3 * (x1*y2 - x2*y1));
+
+            if (Math.abs(A) < 1e-9) return p1.dataY; // Avoid division by zero if points are collinear
+
+            const a = -B / A;
+            const b = C / A;
+            const c = D / A;
+
+
+            return a * x * x + b * x + c;
+        }
+
+        function getParabolaCoefficients() {
+             const p1 = points[0];
+            const p2 = points[1];
+            const p3 = points[2];
+
+            const x1 = p1.dataX, y1 = p1.dataY;
+            const x2 = p2.dataX, y2 = p2.dataY;
+            const x3 = p3.dataX, y3 = p3.dataY;
+
+             // Ensure points are distinct and not vertically aligned for a unique parabola
+             if (x1 === x2 || x1 === x3 || x2 === x3) {
+                console.error("Cannot determine unique parabola with vertically aligned points.");
+                return { a: NaN, b: NaN, c: NaN };
+            }
+
+            // System of equations:
+            // y = ax^2 + bx + c
+
+            // Using Lagrange Interpolation or solving system of linear equations
+            // Let's solve the system of linear equations for a, b, c
+
+            // Eq1: y1 = a*x1^2 + b*x1 + c
+            // Eq2: y2 = a*x2^2 + b*x2 + c
+            // Eq3: y3 = a*x3^2 + b*x3 + c
+
+            // Subtract Eq1 from Eq2:
+            // y2 - y1 = a*(x2^2 - x1^2) + b*(x2 - x1)  (Eq 4)
+            // Subtract Eq2 from Eq3:
+            // y3 - y2 = a*(x3^2 - x2^2) + b*(x3 - x2)  (Eq 5)
+
+            // From Eq 4, if x2 != x1:
+            // (y2 - y1) / (x2 - x1) = a*(x2 + x1) + b
+
+            // From Eq 5, if x3 != x2:
+            // (y3 - y2) / (x3 - x2) = a*(x3 + x2) + b
+
+            // Let m1 = (y2 - y1) / (x2 - x1)
+            // Let m2 = (y3 - y2) / (x3 - x2)
+            // Let s1 = x1 + x2
+            // Let s2 = x2 + x3
+
+            // m1 = a*s1 + b
+            // m2 = a*s2 + b
+
+            // Subtracting these:
+            // m2 - m1 = a*(s2 - s1)
+            // m2 - m1 = a*(x3 - x1)
+
+            const denominator = x3 - x1;
+            if (Math.abs(denominator) < 1e-9) { // Handle vertical alignment of x1 and x3
+                 console.error("Points are vertically aligned, cannot determine unique parabola.");
+                 return { a: NaN, b: NaN, c: NaN };
+            }
+            const a = ( (y3 - y2) / (x3 - x2) - (y2 - y1) / (x2 - x1) ) / (x3 - x1);
+
+            // Now find b using m1 = a*s1 + b
+            const b = (y2 - y1) / (x2 - x1) - a * (x1 + x2);
+
+            // Now find c using y1 = a*x1^2 + b*x1 + c
+            const c = y1 - a * x1 * x1 - b * x1;
+
+            return { a, b, c };
+        }
+
+        function updateEquationDisplay() {
+            const { a, b, c } = getParabolaCoefficients();
+            if (!isNaN(a)) {
+                equationDisplay.innerHTML = `f(x) = ${a.toFixed(3)}x² + ${b.toFixed(3)}x + ${c.toFixed(3)}`;
+
+                // Calculate and display properties
+                const vertexX = -b / (2 * a);
+                const vertexY = a * vertexX * vertexX + b * vertexX + c;
+                vertexDisplay.textContent = `(${vertexX.toFixed(2)}, ${vertexY.toFixed(2)})`;
+
+                axisOfSymmetryDisplay.textContent = `x = ${vertexX.toFixed(2)}`;
+
+                yInterceptDisplay.textContent = `(0, ${c.toFixed(2)})`;
+
+                // Calculate roots (x where f(x) = 0) using quadratic formula: x = [-b ± sqrt(b^2 - 4ac)] / 2a
+                const discriminant = b * b - 4 * a * c;
+                let rootsText = "";
+                if (discriminant > 0) {
+                    const root1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+                    const root2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+                    rootsText = `(${root1.toFixed(2)}, ${root2.toFixed(2)})`;
+                } else if (discriminant === 0) {
+                    const root = -b / (2 * a);
+                    rootsText = `(${root.toFixed(2)})`;
+                } else {
+                    rootsText = "Tidak ada akar real";
+                }
+                rootsDisplay.textContent = rootsText;
+
+            } else {
+                equationDisplay.textContent = "Tidak dapat menentukan persamaan (titik tidak valid).";
+                vertexDisplay.textContent = "(-, -)";
+                axisOfSymmetryDisplay.textContent = "x = -";
+                yInterceptDisplay.textContent = "(0, -)";
+                rootsDisplay.textContent = "-";
+            }
+        }
+
+        function calculateEquationFromPoints() {
+            const x1 = parseFloat(document.getElementById('x1').value);
+            const y1 = parseFloat(document.getElementById('y1').value);
+            const x2 = parseFloat(document.getElementById('x2').value);
+            const y2 = parseFloat(document.getElementById('y2').value);
+            const x3 = parseFloat(document.getElementById('x3').value);
+            const y3 = parseFloat(document.getElementById('y3').value);
+
+            if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2) || isNaN(x3) || isNaN(y3)) {
+                manualEquationDisplay.textContent = "Masukkan koordinat ketiga titik dengan benar.";
+                manualEquationDisplay.className = 'highlight';
+                return;
+            }
+
+             // Update the internal points data based on manual input
+            points[0] = { ...points[0], dataX: x1, dataY: y1 };
+            points[1] = { ...points[1], dataX: x2, dataY: y2 };
+            points[2] = { ...points[2], dataX: x3, dataY: y3 };
+
+            updatePointPositions(); // Update visual positions and input fields if needed
+            drawParabola(); // Redraw based on new points
+            updateEquationDisplay(); // Update the displayed equation and properties
+
+            const { a, b, c } = getParabolaCoefficients();
+            if (!isNaN(a)) {
+                 manualEquationDisplay.textContent = `Persamaan: f(x) = ${a.toFixed(3)}x² + ${b.toFixed(3)}x + ${c.toFixed(3)}`;
+                 manualEquationDisplay.className = '';
+            } else {
+                 manualEquationDisplay.textContent = "Perhitungan gagal. Pastikan titik tidak segaris secara vertikal.";
+                 manualEquationDisplay.className = 'highlight';
+            }
+        }
+
+        // Drag and Drop functionality
+        function onMouseDown(e) {
+            const pointElement = e.target;
+            if (pointElement.classList.contains('point')) {
+                draggingPoint = pointElement;
+                const rect = canvasContainer.getBoundingClientRect();
+                const pointRect = pointElement.getBoundingClientRect();
+
+                // Calculate offset relative to the point's center
+                offset.x = e.clientX - (pointRect.left + pointRect.width / 2);
+                offset.y = e.clientY - (pointRect.top + pointRect.height / 2);
+
+                pointElement.classList.add('dragged');
+                canvas.style.cursor = 'grabbing';
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                 // Prevent default drag behavior
+                e.preventDefault();
+            }
+        }
+
+        function onMouseMove(e) {
+            if (!draggingPoint) return;
+
+            const rect = canvasContainer.getBoundingClientRect();
+            let canvasX = e.clientX - rect.left;
+            let canvasY = e.clientY - rect.top;
+
+            // Constrain movement within canvas bounds
+            canvasX = Math.max(0, Math.min(canvasX, canvas.width));
+            canvasY = Math.max(0, Math.min(canvasY, canvas.height));
+
+            draggingPoint.style.left = `${canvasX - draggingPoint.offsetWidth / 2}px`;
+            draggingPoint.style.top = `${canvasY - draggingPoint.offsetHeight / 2}px`;
+
+            // Update data coordinates in real-time
+            const dataCoords = canvasToData(canvasX, canvasY);
+            const pointData = points.find(p => p.id === draggingPoint.id);
+            if (pointData) {
+                pointData.dataX = dataCoords.x;
+                pointData.dataY = dataCoords.y;
+                // Update input fields immediately for feedback
+                const correspondingInputX = document.getElementById(pointData.id.replace('point', 'x'));
+                const correspondingInputY = document.getElementById(pointData.id.replace('point', 'y'));
+                if (correspondingInputX) correspondingInputX.value = dataCoords.x.toFixed(2);
+                if (correspondingInputY) correspondingInputY.value = dataCoords.y.toFixed(2);
+
+                // Update slider values if the dragged point is the start or end point
+                 if (pointData.id === 'point1') {
+                    startXSlider.value = dataCoords.x;
+                    startYSlider.value = dataCoords.y;
+                    startXValSpan.textContent = startXSlider.value;
+                    startYValSpan.textContent = startYSlider.value;
+                 } else if (pointData.id === 'point3') {
+                    const startXVal = parseFloat(startXSlider.value);
+                    const startYVal = parseFloat(startYSlider.value);
+                    distanceSlider.value = dataCoords.x - startXVal;
+                    distanceValSpan.
